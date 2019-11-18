@@ -608,6 +608,7 @@ func (cc *clientConn) PeerHost(hasPassword string) (host string, err error) {
 // Run reads client query and writes query result to client in for loop, if there is a panic during query handling,
 // it will be recovered and log the panic error.
 // This function returns and the connection is closed if there is an IO error or there is a panic.
+// 具体开 go routine 的位置 开端口接受 SQL
 func (cc *clientConn) Run(ctx context.Context) {
 	const size = 4096
 	defer func() {
@@ -1142,6 +1143,7 @@ func (cc *clientConn) handleLoadStats(ctx context.Context, loadStatsInfo *execut
 // As the execution time of this function represents the performance of TiDB, we do time log and metrics here.
 // There is a special query `load data` that does not return result, which is handled differently.
 // Query `load stats` does not return result either.
+// 处理查询命令的地方 handleQuery
 func (cc *clientConn) handleQuery(ctx context.Context, sql string) (err error) {
 	rs, err := cc.ctx.Execute(ctx, sql)
 	if err != nil {
@@ -1209,6 +1211,7 @@ func (cc *clientConn) handleFieldList(sql string) (err error) {
 	return cc.flush()
 }
 
+// rs.Next 是 Volcano 模型返回结果的顶层调用的位置。
 // writeResultset writes data into a resultset and uses rs.Next to get row data back.
 // If binary is true, the data would be encoded in BINARY format.
 // serverStatus, a flag bit represents server information.

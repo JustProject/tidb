@@ -1059,6 +1059,7 @@ func (s *session) Execute(ctx context.Context, sql string) (recordSets []sqlexec
 	return
 }
 
+// Session 里面执行 SQL 的入口
 func (s *session) execute(ctx context.Context, sql string) (recordSets []sqlexec.RecordSet, err error) {
 	s.PrepareTxnCtx(ctx)
 	connID := s.sessionVars.ConnectionID
@@ -1070,6 +1071,7 @@ func (s *session) execute(ctx context.Context, sql string) (recordSets []sqlexec
 	charsetInfo, collation := s.sessionVars.GetCharsetInfo()
 
 	// Step1: Compile query string to abstract syntax trees(ASTs).
+	// 这部分只会做 Parser 不会有 function 的检查
 	startTS := time.Now()
 	s.GetSessionVars().StartTime = startTS
 	stmtNodes, warns, err := s.ParseSQL(ctx, sql, charsetInfo, collation)
@@ -1091,8 +1093,10 @@ func (s *session) execute(ctx context.Context, sql string) (recordSets []sqlexec
 		sessionExecuteParseDurationGeneral.Observe(durParse.Seconds())
 	}
 
+	// create plan's Compiler.
 	compiler := executor.Compiler{Ctx: s}
 	multiQuery := len(stmtNodes) > 1
+	// traversal all ast nodes.
 	for _, stmtNode := range stmtNodes {
 		s.PrepareTxnCtx(ctx)
 
@@ -1103,6 +1107,7 @@ func (s *session) execute(ctx context.Context, sql string) (recordSets []sqlexec
 			return nil, err
 		}
 
+		// Transform abstract syntax tree to a physical plan
 		stmt, err := compiler.Compile(ctx, stmtNode)
 		if err != nil {
 			s.rollbackOnError(ctx)
