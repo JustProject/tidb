@@ -430,7 +430,7 @@ func (t *tableCommon) getRollbackableMemStore(ctx sessionctx.Context) (kv.Retrie
 	return bs, nil
 }
 
-// AddRecord implements table.Table AddRecord interface.
+// AddRecord implements table.Table AddRecord interface. 增加 kv 记录
 func (t *tableCommon) AddRecord(ctx sessionctx.Context, r []types.Datum, opts ...table.AddRecordOption) (recordID int64, err error) {
 	var opt table.AddRecordOpt
 	for _, fn := range opts {
@@ -518,6 +518,7 @@ func (t *tableCommon) AddRecord(ctx sessionctx.Context, r []types.Datum, opts ..
 	adjustRowValuesBuf(writeBufs, len(row))
 	key := t.RecordKey(recordID)
 	sc := sessVars.StmtCtx
+	// write row.
 	writeBufs.RowValBuf, err = tablecodec.EncodeRow(sc, row, colIDs, writeBufs.RowValBuf, writeBufs.AddRowValues)
 	if err != nil {
 		return 0, err
@@ -574,6 +575,7 @@ func (t *tableCommon) genIndexKeyStr(colVals []types.Datum) (string, error) {
 }
 
 // addIndices adds data into indices. If any key is duplicated, returns the original handle.
+// 构造 index 数据
 func (t *tableCommon) addIndices(sctx sessionctx.Context, recordID int64, r []types.Datum, rm kv.RetrieverMutator,
 	opts []table.CreateIdxOptFunc) (int64, error) {
 	txn, err := sctx.Txn(true)
@@ -616,6 +618,7 @@ func (t *tableCommon) addIndices(sctx sessionctx.Context, recordID int64, r []ty
 			txn.SetOption(kv.PresumeKeyNotExistsError, existErrInfo)
 			dupErr = existErrInfo.Err()
 		}
+		// index create.
 		if dupHandle, err := v.Create(sctx, rm, indexVals, recordID, opts...); err != nil {
 			if kv.ErrKeyExists.Equal(err) {
 				return dupHandle, dupErr

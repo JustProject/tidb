@@ -46,7 +46,7 @@ type Compiler struct {
 	Ctx sessionctx.Context
 }
 
-// Compile compiles an ast.StmtNode to a physical plan.
+// Compile compiles an ast.StmtNode to a physical plan. 物理计划的具体生成位置
 func (c *Compiler) Compile(ctx context.Context, stmtNode ast.StmtNode) (*ExecStmt, error) {
 	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
 		span1 := span.Tracer().StartSpan("executor.Compile", opentracing.ChildOf(span.Context()))
@@ -55,10 +55,12 @@ func (c *Compiler) Compile(ctx context.Context, stmtNode ast.StmtNode) (*ExecStm
 	}
 
 	infoSchema := GetInfoSchema(c.Ctx)
+	// check & band params
 	if err := plannercore.Preprocess(c.Ctx, stmtNode, infoSchema); err != nil {
 		return nil, err
 	}
 
+	// planner optimizer
 	finalPlan, err := planner.Optimize(ctx, c.Ctx, stmtNode, infoSchema)
 	if err != nil {
 		return nil, err
@@ -66,6 +68,7 @@ func (c *Compiler) Compile(ctx context.Context, stmtNode ast.StmtNode) (*ExecStm
 
 	CountStmtNode(stmtNode, c.Ctx.GetSessionVars().InRestrictedSQL)
 	lowerPriority := needLowerPriority(finalPlan)
+	// create exec stmt struct
 	return &ExecStmt{
 		InfoSchema:    infoSchema,
 		Plan:          finalPlan,

@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb/util/ranger"
 )
 
+// max, min 的优化器位置
 // maxMinEliminator tries to eliminate max/min aggregate function.
 // For SQL like `select max(id) from t;`, we could optimize it to `select max(id) from (select id from t order by id desc limit 1 where id is not null) t;`.
 // For SQL like `select min(id) from t;`, we could optimize it to `select max(id) from (select id from t order by id limit 1 where id is not null) t;`.

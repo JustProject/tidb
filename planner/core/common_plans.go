@@ -953,6 +953,7 @@ func (e *Explain) prepareTaskDot(p PhysicalPlan, taskTp string, buffer *bytes.Bu
 //  1. ctx is auto commit tagged
 //  2. txn is not valid
 //  3. plan is point get by pk, or point get by unique index (no double read)
+// auto-commit : make changes by client without manual flush.
 func IsPointGetWithPKOrUniqueKeyByAutoCommit(ctx sessionctx.Context, p Plan) (bool, error) {
 	ok, err := IsAutoCommitNonValidTxn(ctx)
 	if err != nil {

@@ -48,9 +48,11 @@ func InTxnRetry(p *preprocessor) {
 // Preprocess resolves table names of the node, and checks some statements validation.
 func Preprocess(ctx sessionctx.Context, node ast.Node, is infoschema.InfoSchema, preprocessOpt ...PreprocessOpt) error {
 	v := preprocessor{is: is, ctx: ctx, tableAliasInJoin: make([]map[string]interface{}, 0)}
+	// preprocessor is an ast.Node Visitor 主要是根据各种 AST 参数设置 flag 和检查参数之类的
 	for _, optFn := range preprocessOpt {
 		optFn(&v)
 	}
+	// traversal ast node by visitor
 	node.Accept(&v)
 	return errors.Trace(v.err)
 }

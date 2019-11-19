@@ -298,6 +298,7 @@ func (a *ExecStmt) RebuildPlan(ctx context.Context) (int64, error) {
 // Exec builds an Executor from a plan. If the Executor doesn't return result,
 // like the INSERT, UPDATE statements, it executes in this function, if the Executor returns
 // result, execution is done after this function returns, in the returned sqlexec.RecordSet Next method.
+// exec stmt => real executor.
 func (a *ExecStmt) Exec(ctx context.Context) (_ sqlexec.RecordSet, err error) {
 	defer func() {
 		r := recover()
@@ -329,6 +330,7 @@ func (a *ExecStmt) Exec(ctx context.Context) (_ sqlexec.RecordSet, err error) {
 		}()
 	}
 
+	// create real executor.
 	e, err := a.buildExecutor()
 	if err != nil {
 		return nil, err
@@ -366,6 +368,7 @@ func (a *ExecStmt) Exec(ctx context.Context) (_ sqlexec.RecordSet, err error) {
 		return a.handlePessimisticSelectForUpdate(ctx, e)
 	}
 
+	// record set before call top level Volcano (like insert command.)
 	if handled, result, err := a.handleNoDelay(ctx, e, isPessimistic); handled {
 		return result, err
 	}
@@ -378,7 +381,7 @@ func (a *ExecStmt) Exec(ctx context.Context) (_ sqlexec.RecordSet, err error) {
 	if txn.Valid() {
 		txnStartTS = txn.StartTS()
 	}
-	return &recordSet{
+	return &recordSet{ // return record set.
 		executor:   e,
 		stmt:       a,
 		txnStartTS: txnStartTS,
@@ -692,13 +695,19 @@ func (a *ExecStmt) buildExecutor() (Executor, error) {
 	}
 
 	b := newExecutorBuilder(ctx, a.InfoSchema)
-	e := b.build(a.Plan)
+	// switch type to build executor builder.
+	e := b.build(a.Plan) // executor.build(ExecStmt.plan) => Executor.
 	if b.err != nil {
 		return nil, errors.Trace(b.err)
 	}
 
 	// ExecuteExec is not a real Executor, we only use it to build another Executor from a prepared statement.
+	// 这里处理的是 e 的类型是 ExecuteExec 才会继续处理一遍 = =
+	// 也就是说 ExecuteExec 不是一个真实的 Executor 类型，而是可以 re-build 的 prepared 的类型。
+	// 所以才需要 re-build 一下
 	if executorExec, ok := e.(*ExecuteExec); ok {
+		// if is Executor
+		// ExecuteExec.Build(b executor) : b executor.build(e.plan Execute)
 		err := executorExec.Build(b)
 		if err != nil {
 			return nil, err
